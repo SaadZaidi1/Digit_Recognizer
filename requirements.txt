@@ -1,5 +1,30 @@
-streamlit
-numpy
-matplotlib
-tensorflow
-pillow 
+# Core Machine Learning Libraries
+tensorflow==2.19.0
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.5.1
+
+# Data Visualization
+matplotlib==3.9.1
+seaborn==0.13.2
+
+# Image Processing
+Pillow==10.4.0
+
+# Web Framework and UI
+streamlit==1.37.1
+streamlit-drawable-canvas==0.9.3
+
+# Utility Libraries
+# Note: pickle is built-in to Python, no separate package needed
+
+# Additional dependencies (compatible versions to avoid conflicts)
+protobuf>=4.25.3,<5.0.0
+scipy==1.14.0
+joblib==1.4.2
+threadpoolctl==3.5.0
+
+# Optional but recommended for better performance
+# Uncomment if you want to use these
+# opencv-python==4.10.0.84
+# h5py==3.11.0
