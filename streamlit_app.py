@@ -102,7 +102,7 @@ def create_drawing_canvas():
     st.markdown("Use your mouse to draw a digit in the box below:")
     
     if not CANVAS_AVAILABLE:
-        st.error("❌ Drawing canvas not available. Please check dependencies.")
+        st.warning("⚠️ Drawing canvas not available. Using file upload instead.")
         return None
     
     # Create canvas using streamlit's canvas component
@@ -117,6 +117,52 @@ def create_drawing_canvas():
     )
     
     return canvas_result
+
+def create_file_upload():
+    """Create a file upload interface as fallback"""
+    st.markdown("### Upload a digit image")
+    st.markdown("Upload an image of a handwritten digit (0-9):")
+    
+    uploaded_file = st.file_uploader(
+        "Choose an image file", 
+        type=['png', 'jpg', 'jpeg'],
+        help="Upload a clear image of a handwritten digit"
+    )
+    
+    if uploaded_file is not None:
+        try:
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Uploaded Image", use_column_width=True)
+            
+            # Process the uploaded image
+            processed_image = process_uploaded_image(image)
+            return processed_image
+        except Exception as e:
+            st.error(f"❌ Error processing uploaded image: {e}")
+            return None
+    
+    return None
+
+def process_uploaded_image(image):
+    """Process uploaded image for prediction"""
+    try:
+        # Convert to grayscale and resize to 28x28
+        image = image.convert('L')
+        image = image.resize((28, 28), Image.Resampling.LANCZOS)
+        
+        # Convert to numpy array
+        image_array = np.array(image)
+        
+        # Invert colors (white background to black)
+        image_array = 255 - image_array
+        
+        # Normalize to 0-1 range
+        image_array = image_array / 255.0
+        
+        return image_array
+    except Exception as e:
+        st.error(f"❌ Error processing image: {e}")
+        return None
 
 def process_canvas_image(canvas_result):
     """Process the canvas image for prediction"""
@@ -136,6 +182,9 @@ def process_canvas_image(canvas_result):
         
         # Invert colors (white background to black)
         image_array = 255 - image_array
+        
+        # Normalize to 0-1 range
+        image_array = image_array / 255.0
         
         return image_array
     except Exception as e:
@@ -231,7 +280,7 @@ def display_model_info():
     if CANVAS_AVAILABLE:
         st.sidebar.success("✅ Canvas: Available")
     else:
-        st.sidebar.error("❌ Canvas: Missing")
+        st.sidebar.warning("⚠️ Canvas: Using File Upload")
 
 def main():
     """Main Streamlit application"""
@@ -240,31 +289,18 @@ def main():
     st.markdown('<p style="text-align: center; font-size: 1.2rem; color: #666;">Draw a digit and watch the AI predict it!</p>', unsafe_allow_html=True)
     
     # Check dependencies
-    if not CUSTOM_MODULE_AVAILABLE or not CANVAS_AVAILABLE:
+    if not CUSTOM_MODULE_AVAILABLE:
         st.error("""
         ❌ **Deployment Error Detected!**
         
-        The following dependencies are missing:
-        - `improved_digit_recognizer` module
-        - `streamlit-drawable-canvas` package
+        The `improved_digit_recognizer` module is missing.
         
         **To fix this:**
-        1. Make sure `requirements.txt` includes `streamlit-drawable-canvas>=0.9.0`
-        2. Ensure all Python files are in the same directory
-        3. Check that the repository structure is correct
+        1. Ensure all Python files are in the same directory
+        2. Check that the repository structure is correct
+        3. Make sure `improved_digit_recognizer.py` is present
         
-        **Current requirements.txt should contain:**
-        ```
-        tensorflow>=2.19.0
-        numpy>=1.26.0
-        pandas>=2.3.0
-        scikit-learn>=1.7.0
-        streamlit>=1.28.0
-        pillow>=10.0.0
-        matplotlib>=3.7.0
-        seaborn>=0.12.0
-        streamlit-drawable-canvas>=0.9.0
-        ```
+        **Note:** The app will work with file uploads even if the drawing canvas is unavailable.
         """)
         return
     
@@ -281,25 +317,52 @@ def main():
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.markdown('<h2 class="sub-header">🎨 Drawing Canvas</h2>', unsafe_allow_html=True)
-        
-        # Create drawing canvas
-        canvas_result = create_drawing_canvas()
-        
-        if canvas_result is None:
-            return
-        
-        # Clear button
-        if st.button("🗑️ Clear Canvas", type="secondary"):
-            st.rerun()
-        
-        # Process button
-        if st.button("🔍 Predict Digit", type="primary"):
-            if canvas_result.image_data is not None:
-                # Process the drawn image
-                processed_image = process_canvas_image(canvas_result)
+        if CANVAS_AVAILABLE:
+            st.markdown('<h2 class="sub-header">🎨 Drawing Canvas</h2>', unsafe_allow_html=True)
+            
+            # Create drawing canvas
+            canvas_result = create_drawing_canvas()
+            
+            if canvas_result is not None:
+                # Clear button
+                if st.button("🗑️ Clear Canvas", type="secondary"):
+                    st.rerun()
                 
-                if processed_image is not None:
+                # Process button
+                if st.button("🔍 Predict Digit", type="primary"):
+                    if canvas_result.image_data is not None:
+                        # Process the drawn image
+                        processed_image = process_canvas_image(canvas_result)
+                        
+                        if processed_image is not None:
+                            try:
+                                # Make prediction
+                                predicted_digit, confidence, all_predictions = recognizer.predict_digit(processed_image)
+                                
+                                # Store results in session state
+                                st.session_state.prediction = {
+                                    'digit': predicted_digit,
+                                    'confidence': confidence,
+                                    'all_predictions': all_predictions,
+                                    'image': processed_image
+                                }
+                                
+                                st.success("✅ Prediction completed!")
+                            except Exception as e:
+                                st.error(f"❌ Prediction failed: {e}")
+                        else:
+                            st.error("❌ No drawing detected. Please draw a digit first.")
+                    else:
+                        st.error("❌ No drawing detected. Please draw a digit first.")
+        else:
+            st.markdown('<h2 class="sub-header">📁 File Upload</h2>', unsafe_allow_html=True)
+            
+            # Create file upload interface
+            processed_image = create_file_upload()
+            
+            if processed_image is not None:
+                # Process button
+                if st.button("🔍 Predict Digit", type="primary"):
                     try:
                         # Make prediction
                         predicted_digit, confidence, all_predictions = recognizer.predict_digit(processed_image)
@@ -315,10 +378,6 @@ def main():
                         st.success("✅ Prediction completed!")
                     except Exception as e:
                         st.error(f"❌ Prediction failed: {e}")
-                else:
-                    st.error("❌ No drawing detected. Please draw a digit first.")
-            else:
-                st.error("❌ No drawing detected. Please draw a digit first.")
     
     with col2:
         st.markdown('<h2 class="sub-header">📊 Results</h2>', unsafe_allow_html=True)
