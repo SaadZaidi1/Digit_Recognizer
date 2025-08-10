@@ -1,0 +1,10 @@
+# Minimal requirements for deployment
+streamlit
+tensorflow-cpu
+numpy
+pandas
+scikit-learn
+matplotlib
+seaborn
+Pillow
+streamlit-drawable-canvas
