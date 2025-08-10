@@ -147,3 +147,4 @@ If you still encounter issues:
 ---
 
 **🎯 Your app is now ready for deployment!** The fixes ensure it will work reliably on Streamlit Cloud. 🚀
+
